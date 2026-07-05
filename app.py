@@ -1,3 +1,4 @@
+import base64
 import glob
 import os
 import re
@@ -13,27 +14,39 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 
 # =============================================================================
-# إعدادات عامة وهوية بصرية (Brand Identity) — مبنية على شعار edit73
+# الهوية البصرية (Brand Identity) — مبنية على شعار edit73
 # =============================================================================
 BRAND_ORANGE = "#F26921"
-BRAND_ORANGE_HOVER = "#FF7E32"
-BRAND_BLACK = "#0B0B0D"
-BRAND_DARK_CARD = "#17181C"
+BRAND_ORANGE_LIGHT = "#FF8A4C"
+BRAND_BLACK = "#0A0A0C"
+BRAND_SURFACE = "#141519"
+BRAND_SURFACE_2 = "#1C1E24"
+BRAND_BORDER = "#2A2C34"
 BRAND_WHITE = "#F5F5F7"
+BRAND_MUTED = "#8B8D97"
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 FONTS_DIR = os.path.join(APP_DIR, "fonts")
 ASSETS_DIR = os.path.join(APP_DIR, "assets")
 LOGO_PATH = os.path.join(ASSETS_DIR, "logo.png")
+LOGO_SMALL_PATH = os.path.join(ASSETS_DIR, "logo_small.png")
 
 st.set_page_config(
-    page_title="edit73 — مصنع الترجمة الذكي",
+    page_title="edit73 — استوديو الترجمة الذكي",
     page_icon=LOGO_PATH if os.path.exists(LOGO_PATH) else "🎬",
     layout="centered",
 )
 
+
+def _b64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
+LOGO_B64 = _b64(LOGO_SMALL_PATH) if os.path.exists(LOGO_SMALL_PATH) else None
+
 # =============================================================================
-# مفتاح AssemblyAI عبر Secrets فقط (لا يُكتب أبداً داخل الكود)
+# مفتاح AssemblyAI عبر Secrets فقط
 # =============================================================================
 try:
     aai.settings.api_key = st.secrets["ASSEMBLYAI_API_KEY"]
@@ -42,108 +55,249 @@ except (KeyError, FileNotFoundError):
     st.stop()
 
 # =============================================================================
-# تحميل CSS مخصص بالهوية البصرية
+# الخطوط + Google Fonts لواجهة الموقع نفسها
 # =============================================================================
 st.markdown(f"""
-    <style>
-    .stApp {{
-        background: radial-gradient(circle at 20% 0%, #1a1b1f 0%, {BRAND_BLACK} 55%);
-        color: {BRAND_WHITE};
-    }}
-    #MainMenu, footer, header {{ visibility: hidden; }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    .brand-header {{
-        text-align: center;
-        padding: 8px 0 4px 0;
-    }}
-    .brand-title {{
-        font-size: 2.1rem;
-        font-weight: 800;
-        color: {BRAND_WHITE};
-        margin: 4px 0 0 0;
-    }}
-    .brand-title span {{ color: {BRAND_ORANGE}; }}
-    .brand-subtitle {{
-        color: #9a9ba3;
-        font-size: 0.95rem;
-        margin-top: 2px;
-    }}
+<style>
+html, body, [class*="css"] {{
+    font-family: 'Tajawal', 'Poppins', sans-serif;
+}}
 
-    section[data-testid="stFileUploaderDropzone"] {{
-        background-color: {BRAND_DARK_CARD};
-        border: 1.5px dashed {BRAND_ORANGE}55;
-        border-radius: 16px;
-    }}
+.stApp {{
+    background:
+        radial-gradient(circle at 15% -10%, {BRAND_ORANGE}14 0%, transparent 40%),
+        radial-gradient(circle at 100% 10%, {BRAND_ORANGE}0d 0%, transparent 35%),
+        {BRAND_BLACK};
+    color: {BRAND_WHITE};
+}}
+#MainMenu, footer, header {{ visibility: hidden; }}
+.block-container {{ padding-top: 1.2rem; max-width: 760px; }}
 
-    .stButton>button {{
-        background: linear-gradient(135deg, {BRAND_ORANGE}, {BRAND_ORANGE_HOVER});
-        color: #0d0f12;
-        font-weight: 800;
-        font-size: 1.05rem;
-        border-radius: 14px;
-        width: 100%;
-        padding: 12px;
-        border: none;
-        box-shadow: 0 6px 20px {BRAND_ORANGE}33;
-        transition: all 0.2s ease;
-    }}
-    .stButton>button:hover {{
-        transform: translateY(-1px);
-        box-shadow: 0 10px 24px {BRAND_ORANGE}55;
-    }}
+/* ---------- الهيدر العلوي ---------- */
+.top-nav {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 10px 0 4px 0;
+}}
+.top-nav img {{
+    width: 46px;
+    height: 46px;
+}}
+.top-nav .wordmark {{
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: {BRAND_WHITE};
+    letter-spacing: -0.5px;
+}}
+.top-nav .wordmark span {{ color: {BRAND_ORANGE}; }}
 
-    .stDownloadButton>button {{
-        background: {BRAND_DARK_CARD};
-        color: {BRAND_ORANGE};
-        border: 1.5px solid {BRAND_ORANGE};
-        font-weight: 700;
-        border-radius: 14px;
-        width: 100%;
-        padding: 12px;
-    }}
-    .stDownloadButton>button:hover {{
-        background: {BRAND_ORANGE}22;
-    }}
+.hero {{
+    text-align: center;
+    padding: 6px 0 28px 0;
+}}
+.hero h1 {{
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: {BRAND_WHITE};
+    margin: 0 0 8px 0;
+    line-height: 1.35;
+}}
+.hero h1 .accent {{
+    background: linear-gradient(90deg, {BRAND_ORANGE}, {BRAND_ORANGE_LIGHT});
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}}
+.hero p {{
+    color: {BRAND_MUTED};
+    font-size: 0.98rem;
+    max-width: 480px;
+    margin: 0 auto;
+}}
 
-    div[data-testid="stExpander"] {{
-        background-color: {BRAND_DARK_CARD};
-        border-radius: 14px;
-        border: 1px solid #2a2c33;
-    }}
+/* ---------- شارات الخطوات ---------- */
+.steps-row {{
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 26px;
+    flex-wrap: wrap;
+}}
+.step-pill {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: {BRAND_SURFACE};
+    border: 1px solid {BRAND_BORDER};
+    border-radius: 999px;
+    padding: 7px 16px;
+    font-size: 0.82rem;
+    color: {BRAND_MUTED};
+}}
+.step-pill .num {{
+    background: {BRAND_ORANGE};
+    color: #0d0f12;
+    font-weight: 800;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+}}
 
-    div[data-baseweb="select"] > div, .stTextInput input, .stNumberInput input {{
-        background-color: #1f2128 !important;
-        color: {BRAND_WHITE} !important;
-        border-radius: 10px !important;
-    }}
+/* ---------- بطاقة القسم ---------- */
+.section-card {{
+    background: {BRAND_SURFACE};
+    border: 1px solid {BRAND_BORDER};
+    border-radius: 18px;
+    padding: 22px 20px 8px 20px;
+    margin-bottom: 22px;
+}}
+.section-card h3 {{
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: {BRAND_WHITE};
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+.section-card .desc {{
+    color: {BRAND_MUTED};
+    font-size: 0.85rem;
+    margin-bottom: 14px;
+}}
 
-    .stSlider [data-baseweb="slider"] > div > div {{ background: {BRAND_ORANGE} !important; }}
+/* ---------- رفع الفيديو ---------- */
+section[data-testid="stFileUploaderDropzone"] {{
+    background-color: {BRAND_SURFACE} !important;
+    border: 1.5px dashed {BRAND_ORANGE}66 !important;
+    border-radius: 18px !important;
+    padding: 8px !important;
+}}
+section[data-testid="stFileUploaderDropzone"]:hover {{
+    border-color: {BRAND_ORANGE} !important;
+    background-color: {BRAND_SURFACE_2} !important;
+}}
 
-    footer-credit {{
-        text-align: center; color: #55565c; font-size: 0.8rem;
-    }}
-    </style>
+/* ---------- التبويبات ---------- */
+.stTabs [data-baseweb="tab-list"] {{
+    gap: 4px;
+    background: {BRAND_SURFACE};
+    padding: 5px;
+    border-radius: 14px;
+    border: 1px solid {BRAND_BORDER};
+}}
+.stTabs [data-baseweb="tab"] {{
+    border-radius: 10px;
+    color: {BRAND_MUTED};
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 8px 14px;
+}}
+.stTabs [aria-selected="true"] {{
+    background: {BRAND_ORANGE} !important;
+    color: #0d0f12 !important;
+}}
+.stTabs [data-baseweb="tab-panel"] {{
+    background: {BRAND_SURFACE_2};
+    border: 1px solid {BRAND_BORDER};
+    border-radius: 0 0 14px 14px;
+    padding: 20px 16px;
+}}
+
+/* ---------- عناصر الإدخال ---------- */
+div[data-baseweb="select"] > div, .stTextInput input, .stNumberInput input {{
+    background-color: #1f2128 !important;
+    color: {BRAND_WHITE} !important;
+    border-radius: 10px !important;
+    border-color: {BRAND_BORDER} !important;
+}}
+.stSlider [data-baseweb="slider"] > div > div {{ background: {BRAND_ORANGE} !important; }}
+div[role="radiogroup"] label, .stRadio label {{ color: {BRAND_WHITE} !important; }}
+.stCheckbox label, .stToggle p {{ color: {BRAND_WHITE} !important; }}
+
+/* ---------- الأزرار ---------- */
+.stButton>button {{
+    background: linear-gradient(135deg, {BRAND_ORANGE}, {BRAND_ORANGE_LIGHT});
+    color: #14100c;
+    font-weight: 800;
+    font-size: 1.05rem;
+    border-radius: 14px;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    box-shadow: 0 8px 22px {BRAND_ORANGE}3a;
+    transition: all 0.2s ease;
+}}
+.stButton>button:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px {BRAND_ORANGE}55;
+}}
+.stButton>button:active {{ transform: translateY(0px) scale(0.99); }}
+
+.stDownloadButton>button {{
+    background: {BRAND_SURFACE};
+    color: {BRAND_ORANGE};
+    border: 1.5px solid {BRAND_ORANGE};
+    font-weight: 700;
+    border-radius: 14px;
+    width: 100%;
+    padding: 13px;
+}}
+.stDownloadButton>button:hover {{ background: {BRAND_ORANGE}1f; }}
+
+/* ---------- تنبيهات ---------- */
+div[data-testid="stAlert"] {{
+    border-radius: 14px;
+    border: 1px solid {BRAND_BORDER};
+}}
+
+/* ---------- الفوتر ---------- */
+.app-footer {{
+    text-align: center;
+    color: #55565c;
+    font-size: 0.8rem;
+    padding: 30px 0 10px 0;
+}}
+.app-footer span {{ color: {BRAND_ORANGE}; }}
+</style>
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# رأس الصفحة: الشعار + العنوان
+# الهيدر + قسم الهيرو
 # =============================================================================
-col_a, col_b, col_c = st.columns([1, 1.3, 1])
-with col_b:
-    if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, use_container_width=True)
+if LOGO_B64:
+    st.markdown(f"""
+        <div class="top-nav">
+            <img src="data:image/png;base64,{LOGO_B64}" alt="edit73 logo" />
+            <div class="wordmark">edit<span>73</span></div>
+        </div>
+    """, unsafe_allow_html=True)
 
-st.markdown(f"""
-    <div class="brand-header">
-        <div class="brand-title">edit<span>73</span></div>
-        <div class="brand-subtitle">مصنع الترجمة الذكي — حوّل فيديوهاتك لمحتوى جاهز للانتشار 🚀</div>
+st.markdown("""
+    <div class="hero">
+        <h1>حوّل فيديوهاتك إلى <span class="accent">محتوى جاهز للانتشار</span></h1>
+        <p>ترجمة تلقائية بالذكاء الاصطناعي، بتصميم يدعم العربية والإنجليزية، وجاهز لكل منصات السوشال ميديا.</p>
+    </div>
+
+    <div class="steps-row">
+        <div class="step-pill"><span class="num">1</span> ارفع الفيديو</div>
+        <div class="step-pill"><span class="num">2</span> خصّص الشكل</div>
+        <div class="step-pill"><span class="num">3</span> حمّل النتيجة</div>
     </div>
 """, unsafe_allow_html=True)
 
-st.write("")
-
 # =============================================================================
-# الخطوط: عربي وإنجليزي، بأوزان متعددة (Bold / ExtraBold / Black)
+# الخطوط: عربي وإنجليزي، بأوزان متعددة
 # =============================================================================
 FONT_LIBRARY = {
     "عريض (Bold)": {
@@ -178,7 +332,7 @@ def is_mostly_arabic(txt):
 def prepare_text_for_rendering(txt):
     """
     يعالج تشكيل الحروف العربية (ربط الحروف) وترتيب اتجاه النص (Bidi) يدوياً،
-    لأن ImageMagick لا يطبّق هذا المنطق تلقائياً على السيرفر.
+    لأن محرك الرسم لا يطبّق هذا المنطق تلقائياً على كل السيرفرات.
     """
     if _ARABIC_RE.search(txt):
         reshaped = arabic_reshaper.reshape(txt)
@@ -211,18 +365,23 @@ def create_srt_batches(words, batch_size=3):
             msecs = ms % 1000
             return f"{hrs:02d}:{mins:02d}:{secs:02d},{msecs:03d}"
 
-        start_srt = format_time(start_time)
-        end_srt = format_time(end_time)
-        batch_text = " ".join([word.text for word in batch])
-        srt_content += f"{counter}\n{format_time(start_time)} --> {format_time(end_time)}\n{batch_text}\n\n"
+        srt_content += f"{counter}\n{format_time(start_time)} --> {format_time(end_time)}\n"
+        srt_content += " ".join([word.text for word in batch]) + "\n\n"
         counter += 1
     return srt_content
 
 
 # =============================================================================
-# واجهة رفع الفيديو
+# قسم رفع الفيديو
 # =============================================================================
-uploaded_file = st.file_uploader("📥 اسحب وأفلت مقطع الفيديو هنا (MP4)...", type=["mp4"])
+st.markdown("""
+    <div class="section-card">
+        <h3>📥 ارفع الفيديو</h3>
+        <div class="desc">صيغة MP4 فقط — سيتم تحليل الصوت تلقائياً وتحديد اللغة.</div>
+    </div>
+""", unsafe_allow_html=True)
+
+uploaded_file = st.file_uploader(" ", type=["mp4"], label_visibility="collapsed")
 
 if uploaded_file is not None:
     with open("temp_input.mp4", "wb") as f:
@@ -233,9 +392,14 @@ if uploaded_file is not None:
     # =========================================================================
     # خيارات التصميم
     # =========================================================================
-    st.markdown("### 🎛️ خصص شكل فيديوك")
+    st.markdown("""
+        <div class="section-card" style="margin-top:26px;">
+            <h3>🎛️ خصّص شكل الفيديو</h3>
+            <div class="desc">تحكم كامل بالترجمة، الإطار، والهووك الافتتاحي.</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    tab_caption, tab_frame, tab_hook = st.tabs(["🎨 الترجمة", "🖼️ الإطار والشكل", "🪝 الهووك الافتتاحي"])
+    tab_caption, tab_frame, tab_hook = st.tabs(["🎨  الترجمة", "🖼️  الإطار والشكل", "🪝  الهووك"])
 
     with tab_caption:
         c1, c2 = st.columns(2)
@@ -250,7 +414,7 @@ if uploaded_file is not None:
 
         bg_style = st.radio(
             "خلفية الترجمة",
-            ["بدون خلفية (شفافة)", "صندوق أسود شفاف", "صندوق بلون العلامة (Brand)"],
+            ["بدون خلفية (شفافة)", "صندوق أسود شفاف", "صندوق بلون العلامة"],
             horizontal=True,
         )
         words_per_caption = st.slider("عدد الكلمات بكل شريحة ترجمة", 1, 6, 3)
@@ -268,7 +432,7 @@ if uploaded_file is not None:
             border_thickness = st.slider("سُمك الإطار حول الفيديو (px)", 0, 60, 0)
 
     with tab_hook:
-        use_hook = st.toggle("إظهار جملة جذب (Hook) في أعلى الفيديو بالبداية", value=False)
+        use_hook = st.toggle("إظهار جملة جذب (Hook) أعلى الفيديو بالبداية", value=False)
         hook_text = st.text_input("نص الهووك", "أنتَ لن تصدق ما سيحدث 👀", disabled=not use_hook)
         c5, c6 = st.columns(2)
         with c5:
@@ -315,7 +479,7 @@ if uploaded_file is not None:
 
                 if bg_style == "صندوق أسود شفاف":
                     kwargs["bg_color"] = (0, 0, 0, 140)
-                elif bg_style == "صندوق بلون العلامة (Brand)":
+                elif bg_style == "صندوق بلون العلامة":
                     kwargs["bg_color"] = hex_to_rgb(BRAND_ORANGE) + (255,)
 
                 return vc.TextClip(**kwargs)
@@ -395,15 +559,19 @@ if uploaded_file is not None:
             )
 
         st.success("🎉 يسلّم راسك! المقطع جاهز ومطبوخ بأعلى جودة!")
-        st.write("### 🔥 الق نظرة على مقطعك الرهيب:")
+        st.markdown("""
+            <div class="section-card" style="margin-top:20px;">
+                <h3>🔥 النتيجة النهائية</h3>
+            </div>
+        """, unsafe_allow_html=True)
         st.video("temp_output.mp4")
 
         with open("temp_output.mp4", "rb") as file:
             st.download_button(
-                label="📥 تحميل الفيديو المترجم فوراً بجهازك",
+                label="📥 تحميل الفيديو المترجم",
                 data=file,
                 file_name="edit73_video.mp4",
                 mime="video/mp4"
             )
 
-st.markdown("<p class='footer-credit'>Made with 🧡 by edit73</p>", unsafe_allow_html=True)
+st.markdown('<div class="app-footer">صُنع بشغف بواسطة <span>edit73</span></div>', unsafe_allow_html=True)
