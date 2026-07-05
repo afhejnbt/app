@@ -2,7 +2,6 @@ import os
 os.system("apt-get update && apt-get install -y imagemagick fonts-dejavu-core")
 os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/convert"
 os.system("apt-get update && apt-get install -y imagemagick")
-import glob st.write(glob.glob("/usr/share/fonts/truetype/dejavu/*.ttf"))
 import streamlit as st
 import assemblyai as aai
 import moviepy.video.io.VideoFileClip as vfc
