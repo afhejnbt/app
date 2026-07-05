@@ -22,6 +22,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# -----------------------------------------------------------------------
+# مفتاح الـ API: لا تكتبه مباشرة في الكود أبداً.
+# ضِفه في Streamlit Cloud تحت: Settings -> Secrets، بهذا الشكل:
+#   ASSEMBLYAI_API_KEY = "your_real_key_here"
+# ثم شغّل التطبيق محلياً بملف .streamlit/secrets.toml بنفس المتغير.
+# -----------------------------------------------------------------------
 try:
     aai.settings.api_key = st.secrets["ASSEMBLYAI_API_KEY"]
 except (KeyError, FileNotFoundError):
@@ -31,15 +37,30 @@ except (KeyError, FileNotFoundError):
 
 def find_font_path():
     """
-    يبحث عن أول خط DejaVuSans متاح على السيرفر.
-    يجب تثبيت الحزمة fonts-dejavu-core عبر ملف apt.txt في جذر المستودع
-    (أضف سطر واحد فيه: fonts-dejavu-core) حتى يعمل هذا بشكل موثوق على Streamlit Cloud.
+    يبحث عن خط DejaVuSans صالح للاستخدام، بترتيب أولوية:
+    1) الخط المرفق مسبقاً مع مكتبة matplotlib (لا يحتاج apt-get إطلاقاً، وموجود دائماً
+       لأن matplotlib غالباً مثبتة كاعتماد ضمني ضمن بيئة Python العلمية).
+    2) خط النظام (لو apt.txt نجح في تثبيته).
+    3) أي ملف .ttf آخر متاح على السيرفر كحل أخير.
     """
+    # 1) خط matplotlib المدمج
+    try:
+        import matplotlib
+        mpl_font = os.path.join(
+            os.path.dirname(matplotlib.__file__),
+            "mpl-data", "fonts", "ttf", "DejaVuSans.ttf"
+        )
+        if os.path.exists(mpl_font):
+            return mpl_font
+    except ImportError:
+        pass
+
+    # 2) خط النظام عبر apt.txt
     candidates = glob.glob("/usr/share/fonts/truetype/dejavu/DejaVuSans*.ttf")
     if candidates:
         return candidates[0]
 
-    # محاولة احتياطية: بحث أوسع في مجلدات الخطوط
+    # 3) أي خط ttf آخر كحل أخير
     fallback = glob.glob("/usr/share/fonts/**/*.ttf", recursive=True)
     if fallback:
         return fallback[0]
