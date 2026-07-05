@@ -1,7 +1,8 @@
 import os
 
 os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/convert"
-os.system("apt-get update && apt-get install -y imagemagick")import streamlit as st
+os.system("apt-get update && apt-get install -y imagemagick")
+import streamlit as st
 import assemblyai as aai
 import moviepy.video.io.VideoFileClip as vfc
 import moviepy.video.VideoClip as vc
