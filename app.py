@@ -1,5 +1,6 @@
 import os
-os.system("apt-get update && apt-get install -y imagemagick")
+# إجبار السيرفر على التعرف على مسار ImageMagick في بيئة لينوكس
+os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/convert"os.system("apt-get update && apt-get install -y imagemagick")
 import streamlit as st
 import assemblyai as aai
 import moviepy.video.io.VideoFileClip as vfc
@@ -50,14 +51,10 @@ def create_styled_text(txt):
     return vc.TextClip(
         text=txt,
         font_size=40,
-        color='black',
-        bg_color='white',
-        font='DejaVuSans-Bold',
-        
-        # ⬇️ السطرين السحريين لإرضاء السيرفر الجديد ⬇️
-        size=(640, None),       # حددنا عرض ثابت (640 بكسل) مع ارتفاع مرن، وهو المقاس المثالي لمنع الخطأ تماماً
-        method='caption'        # أجبرنا المكتبة على توزيع النص بداخل العرض المحدد بشكل منسق
-    )
+        color='white',
+        bg_color='black',
+        font='DejaVuSans'
+    )    
     
 st.title("🎬 مصنع الترجمة الذكي")
 st.write("<p style='text-align: center; color: #bdc3c7;'>أهلاً بك يا بطل! ارفع فيديو وسيتولى الذكاء الاصطناعي هندسة النصوص وتلوينها فوراً.</p>", unsafe_allow_html=True)
