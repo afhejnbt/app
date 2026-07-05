@@ -22,12 +22,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------
-# مفتاح الـ API: لا تكتبه مباشرة في الكود أبداً.
-# ضِفه في Streamlit Cloud تحت: Settings -> Secrets، بهذا الشكل:
-#   ASSEMBLYAI_API_KEY = "your_real_key_here"
-# ثم شغّل التطبيق محلياً بملف .streamlit/secrets.toml بنفس المتغير.
-# -----------------------------------------------------------------------
+ASSEMBLYAI_API_KEY = "5f06039b401740c49a845ab4db2a0421"# مفتاح الـ API: ل
+
 try:
     aai.settings.api_key = st.secrets["ASSEMBLYAI_API_KEY"]
 except (KeyError, FileNotFoundError):
