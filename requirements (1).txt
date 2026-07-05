@@ -1,3 +1,0 @@
-streamlit
-assemblyai
-moviepy>=2.0.0
