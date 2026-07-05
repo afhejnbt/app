@@ -52,9 +52,13 @@ def create_styled_text(txt):
         font_size=40,
         color='black',
         bg_color='white',
-        font='DejaVuSans-Bold'
+        font='DejaVuSans-Bold',
+        
+        # ⬇️ السطرين السحريين لإرضاء السيرفر الجديد ⬇️
+        size=(640, None),       # حددنا عرض ثابت (640 بكسل) مع ارتفاع مرن، وهو المقاس المثالي لمنع الخطأ تماماً
+        method='caption'        # أجبرنا المكتبة على توزيع النص بداخل العرض المحدد بشكل منسق
     )
-
+    
 st.title("🎬 مصنع الترجمة الذكي")
 st.write("<p style='text-align: center; color: #bdc3c7;'>أهلاً بك يا بطل! ارفع فيديو وسيتولى الذكاء الاصطناعي هندسة النصوص وتلوينها فوراً.</p>", unsafe_allow_html=True)
 
