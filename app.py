@@ -49,14 +49,11 @@ def create_srt_batches(words, batch_size=3):
 def create_styled_text(txt):
     return vc.TextClip(
         text=txt, 
-        font='DejaVuSans-Bold',  # الخط العريض المدعوم
+        font='DejaVuSans-Bold',
         font_size=40, 
         color='black', 
-        bg_color='white',        # الخلفية البيضاء
-        
-        method='label',          # غيرناها إلى label لكي تُفصّل الخلفية على مقاس النص بالضبط بدون إجبار على تحديد الحجم
-        size=(None, None),       # الآن العرض مرن تماماً بدون أي خطأ
-        margin=(20, 15)          # البادينغ الاحترافي (20 يمين ويسار، 15 فوق وتحت)
+        bg_color='white',
+        method='label'          # حذفنا الـ size والـ margin تماماً لمنع أي تعارض
     )
 
 
