@@ -1,0 +1,6 @@
+streamlit
+assemblyai
+moviepy>=2.0.0
+matplotlib
+arabic-reshaper
+python-bidi
