@@ -1,7 +1,9 @@
 import os
-
+os.system("apt-get update && apt-get install -y imagemagick fonts-dejavu-core")
 os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/convert"
+st.write(glob.glob("/usr/share/fonts/truetype/dejavu/*.ttf"))
 os.system("apt-get update && apt-get install -y imagemagick")
+import glob
 import streamlit as st
 import assemblyai as aai
 import moviepy.video.io.VideoFileClip as vfc
@@ -54,8 +56,8 @@ def create_styled_text(txt):
         font_size=40,
         color='white',
         bg_color='black',
-        font='DejaVuSans'
-    )    
+        font='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'  # full path, not just the name
+    )
     
 st.title("🎬 مصنع الترجمة الذكي")
 st.write("<p style='text-align: center; color: #bdc3c7;'>أهلاً بك يا بطل! ارفع فيديو وسيتولى الذكاء الاصطناعي هندسة النصوص وتلوينها فوراً.</p>", unsafe_allow_html=True)
