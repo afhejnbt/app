@@ -1,4 +1,5 @@
 import os
+os.system("apt-get update && apt-get install -y imagemagick")
 import streamlit as st
 import assemblyai as aai
 import moviepy.video.io.VideoFileClip as vfc
