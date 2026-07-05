@@ -22,7 +22,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-ASSEMBLYAI_API_KEY = "5f06039b401740c49a845ab4db2a0421"# مفتاح الـ API: ل
+ASSEMBLYAI_API_KEY = "5f06039b401740c49a845ab4db2a0421"
 
 try:
     aai.settings.api_key = st.secrets["ASSEMBLYAI_API_KEY"]
