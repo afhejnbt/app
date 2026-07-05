@@ -48,14 +48,12 @@ def create_srt_batches(words, batch_size=3):
 
 def create_styled_text(txt):
     return vc.TextClip(
-        text=txt, 
-        font='DejaVuSans-Bold',
-        font_size=40, 
-        color='black', 
+        text=txt,
+        font_size=40,
+        color='black',
         bg_color='white',
-        method='label'          # حذفنا الـ size والـ margin تماماً لمنع أي تعارض
+        font='DejaVuSans-Bold'
     )
-
 
 st.title("🎬 مصنع الترجمة الذكي")
 st.write("<p style='text-align: center; color: #bdc3c7;'>أهلاً بك يا بطل! ارفع فيديو وسيتولى الذكاء الاصطناعي هندسة النصوص وتلوينها فوراً.</p>", unsafe_allow_html=True)
