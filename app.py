@@ -1,7 +1,6 @@
+import glob
 import os
-os.system("apt-get update && apt-get install -y imagemagick fonts-dejavu-core")
-os.environ["IMAGEMAGICK_BINARY"] = "/usr/bin/convert"
-os.system("apt-get update && apt-get install -y imagemagick")
+
 import streamlit as st
 import assemblyai as aai
 import moviepy.video.io.VideoFileClip as vfc
@@ -23,24 +22,62 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ضع مفتاح الـ API الخاص بك هنا
-aai.settings.api_key = "5f06039b401740c49a845ab4db2a0421"
+# -----------------------------------------------------------------------
+# مفتاح الـ API: لا تكتبه مباشرة في الكود أبداً.
+# ضِفه في Streamlit Cloud تحت: Settings -> Secrets، بهذا الشكل:
+#   ASSEMBLYAI_API_KEY = "your_real_key_here"
+# ثم شغّل التطبيق محلياً بملف .streamlit/secrets.toml بنفس المتغير.
+# -----------------------------------------------------------------------
+try:
+    aai.settings.api_key = st.secrets["ASSEMBLYAI_API_KEY"]
+except (KeyError, FileNotFoundError):
+    st.error("⚠️ لم يتم العثور على مفتاح AssemblyAI. أضفه في Secrets باسم ASSEMBLYAI_API_KEY.")
+    st.stop()
+
+
+def find_font_path():
+    """
+    يبحث عن أول خط DejaVuSans متاح على السيرفر.
+    يجب تثبيت الحزمة fonts-dejavu-core عبر ملف apt.txt في جذر المستودع
+    (أضف سطر واحد فيه: fonts-dejavu-core) حتى يعمل هذا بشكل موثوق على Streamlit Cloud.
+    """
+    candidates = glob.glob("/usr/share/fonts/truetype/dejavu/DejaVuSans*.ttf")
+    if candidates:
+        return candidates[0]
+
+    # محاولة احتياطية: بحث أوسع في مجلدات الخطوط
+    fallback = glob.glob("/usr/share/fonts/**/*.ttf", recursive=True)
+    if fallback:
+        return fallback[0]
+
+    return None
+
+
+FONT_PATH = find_font_path()
+
+if FONT_PATH is None:
+    st.error(
+        "⚠️ لم يتم العثور على أي خط TTF على السيرفر. "
+        "أضف ملف apt.txt في جذر المشروع يحتوي على السطر: fonts-dejavu-core"
+    )
+    st.stop()
+
 
 def create_srt_batches(words, batch_size=3):
     srt_content = ""
     counter = 1
     for i in range(0, len(words), batch_size):
-        batch = words[i:i+batch_size]
+        batch = words[i:i + batch_size]
         start_time = batch[0].start
         end_time = batch[-1].end
-        
+
         def format_time(ms):
             hrs = ms // 3600000
             mins = (ms % 3600000) // 60000
             secs = (ms % 60000) // 1000
             msecs = ms % 1000
             return f"{hrs:02d}:{mins:02d}:{secs:02d},{msecs:03d}"
-        
+
         start_srt = format_time(start_time)
         end_srt = format_time(end_time)
         batch_text = " ".join([word.text for word in batch])
@@ -48,17 +85,26 @@ def create_srt_batches(words, batch_size=3):
         counter += 1
     return srt_content
 
+
 def create_styled_text(txt):
+    # ملاحظة مهمة: في MoviePy 2.x يجب أن يكون "font" مساراً حقيقياً لملف .ttf
+    # وليس اسم عائلة الخط فقط (مثل 'DejaVuSans').
     return vc.TextClip(
         text=txt,
         font_size=40,
         color='white',
         bg_color='black',
-        font='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'  # full path, not just the name
+        font=FONT_PATH
     )
-    
+
+
 st.title("🎬 مصنع الترجمة الذكي")
-st.write("<p style='text-align: center; color: #bdc3c7;'>أهلاً بك يا بطل! ارفع فيديو وسيتولى الذكاء الاصطناعي هندسة النصوص وتلوينها فوراً.</p>", unsafe_allow_html=True)
+st.write(
+    "<p style='text-align: center; color: #bdc3c7;'>"
+    "أهلاً بك يا بطل! ارفع فيديو وسيتولى الذكاء الاصطناعي هندسة النصوص وتلوينها فوراً."
+    "</p>",
+    unsafe_allow_html=True
+)
 
 # صندوق رفع الفيديو
 uploaded_file = st.file_uploader("📥 اسحب وأفلت مقطع الفيديو هنا (MP4)...", type=["mp4"])
@@ -66,47 +112,48 @@ uploaded_file = st.file_uploader("📥 اسحب وأفلت مقطع الفيدي
 if uploaded_file is not None:
     with open("temp_input.mp4", "wb") as f:
         f.write(uploaded_file.read())
-    
+
     st.video("temp_input.mp4")
-    
+
     if st.button("🚀 ابدأ السحر واطبخ الفيديو الحين!"):
-        
+
         # عبارات انتظار بشرية وحماسية
         with st.spinner("🧠 قاعدين نسمع المقطع الحين ونفكك الكلمات بدقة.. ثواني وبنبهرك!"):
             config = aai.TranscriptionConfig(language_detection=True)
             transcriber = aai.Transcriber()
             transcript = transcriber.transcribe("temp_input.mp4", config=config)
-            
+
             if transcript.status == aai.TranscriptStatus.error:
                 st.error(f"❌ أوبس! حصلت مشكلة بالذكاء الاصطناعي: {transcript.error}")
-            else:
-                lang = transcript.json_response.get('language_code')
-                st.success(f"🌍 لقطنا لغة الفيديو! طلعت: ({lang})")
-                
-                srt_data = create_srt_batches(transcript.words, batch_size=3)
-                with open("temp_subtitles.srt", "w", encoding="utf-8") as s_file:
-                    _ = s_file.write(srt_data)
+                st.stop()
+
+            lang = transcript.json_response.get('language_code')
+            st.success(f"🌍 لقطنا لغة الفيديو! طلعت: ({lang})")
+
+            srt_data = create_srt_batches(transcript.words, batch_size=3)
+            with open("temp_subtitles.srt", "w", encoding="utf-8") as s_file:
+                _ = s_file.write(srt_data)
 
         with st.spinner("🎨 الحين جاري دمج النصوص وتلوينها بالستايل الجديد في أسفل الشاشة.. اجهز للنتيجة!"):
             video = vfc.VideoFileClip("temp_input.mp4")
             subtitles = sub.SubtitlesClip("temp_subtitles.srt", make_textclip=create_styled_text)
-            
+
             # ضبط الموقع ليكون أسفل الفيديو (80% من الارتفاع) ومتمركز في العرض
             subtitles = subtitles.with_position(('center', 0.8), relative=True)
-            
+
             final_video = cvc.CompositeVideoClip([video, subtitles])
             final_video.write_videofile(
-                "temp_output.mp4", 
-                codec='libx264', 
+                "temp_output.mp4",
+                codec='libx264',
                 audio_codec='aac',
                 preset='ultrafast',
                 logger=None
             )
-        
+
         st.success("🎉 يسلّم راسك! المقطع جاهز ومطبوخ بأعلى جودة!")
         st.write("### 🔥 الق نظرة على مقطعك الرهيب:")
         st.video("temp_output.mp4")
-        
+
         with open("temp_output.mp4", "rb") as file:
             st.download_button(
                 label="📥 تحميل الفيديو المترجم فوراً بجهازك",
