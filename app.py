@@ -4,12 +4,32 @@ import re
 
 import streamlit as st
 import assemblyai as aai
+from PIL import ImageFont
+
+# =============================================================================
+# إصلاح جذري لعرض النص العربي: تعطيل محرك raqm نهائياً وفرض معالجة ثابتة
+# (arabic_reshaper + bidi) على كل السيرفرات دون استثناء.
+#
+# السبب: بعض بيئات الاستضافة (مثل Streamlit Cloud) لا تملك مكتبة raqm النظامية،
+# فتتحول المكتبة تلقائياً لأسلوب عرض مختلف قد ينتج حروفاً مفقودة مع خطوط لا
+# تغطي كامل "أشكال العرض" العربية. بفرض نفس المسار دائماً (بدل ترك القرار
+# لبيئة السيرفر)، تصبح النتيجة متطابقة ومضمونة على أي خادم.
+# =============================================================================
+_original_truetype = ImageFont.truetype
+
+
+def _truetype_forced_basic(*args, **kwargs):
+    kwargs["layout_engine"] = ImageFont.Layout.BASIC
+    return _original_truetype(*args, **kwargs)
+
+
+ImageFont.truetype = _truetype_forced_basic
+
 import moviepy.video.io.VideoFileClip as vfc
 import moviepy.video.VideoClip as vc
 from moviepy.video.VideoClip import ColorClip
 import moviepy.video.compositing.CompositeVideoClip as cvc
 import moviepy.video.tools.subtitles as sub
-from PIL import features as pil_features
 import arabic_reshaper
 from bidi.algorithm import get_display
 
@@ -17,13 +37,13 @@ from bidi.algorithm import get_display
 # الهوية البصرية
 # =============================================================================
 BRAND_ORANGE = "#F26921"
-BRAND_ORANGE_LIGHT = "#FF8A4C"
-BRAND_BLACK = "#0A0A0C"
-BRAND_SURFACE = "#141519"
-BRAND_SURFACE_2 = "#1C1E24"
-BRAND_BORDER = "#2A2C34"
-BRAND_WHITE = "#F5F5F7"
-BRAND_MUTED = "#9C9DA6"
+BRAND_ORANGE_DARK = "#C8551A"
+BRAND_ORANGE_SOFT = "#FDEEE5"
+INK = "#15161A"
+INK_SOFT = "#5B5D68"
+LINE = "#E7E7EA"
+SURFACE = "#FFFFFF"
+PAGE_BG = "#FAFAFA"
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 FONTS_DIR = os.path.join(APP_DIR, "fonts")
@@ -55,7 +75,7 @@ except (KeyError, FileNotFoundError):
     st.stop()
 
 # =============================================================================
-# التصميم: خطوط الواجهة + الأنماط
+# التصميم
 # =============================================================================
 st.markdown(f"""
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -66,209 +86,224 @@ st.markdown(f"""
 <style>
 html, body, [class*="css"] {{ font-family: 'Tajawal', 'Inter', sans-serif; }}
 
-.stApp {{
-    background: {BRAND_BLACK};
-    color: {BRAND_WHITE};
-}}
+.stApp {{ background: {PAGE_BG}; color: {INK}; }}
 #MainMenu, footer, header {{ visibility: hidden; }}
-.block-container {{ padding-top: 2.2rem; padding-bottom: 3rem; max-width: 720px; }}
+.block-container {{ padding-top: 0 !important; padding-bottom: 3rem; max-width: 760px; }}
 
-/* ---------- الهيدر ---------- */
-.top-nav {{
+/* ---------- الشريط العلوي ---------- */
+.top-bar {{
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    padding-bottom: 8px;
+    gap: 10px;
+    background: {SURFACE};
+    border-bottom: 1px solid {LINE};
+    margin: 0 -1rem 0 -1rem;
+    padding: 16px 1rem;
 }}
-.top-nav img {{ width: 38px; height: 38px; }}
-.top-nav .wordmark {{
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: {BRAND_WHITE};
-    letter-spacing: -0.3px;
-}}
-.top-nav .wordmark span {{ color: {BRAND_ORANGE}; }}
+.top-bar img {{ width: 30px; height: 30px; }}
+.top-bar .wordmark {{ font-size: 1.05rem; font-weight: 800; color: {INK}; }}
+.top-bar .wordmark span {{ color: {BRAND_ORANGE}; }}
 
-.hero {{
-    text-align: center;
-    padding: 20px 0 34px 0;
-    border-bottom: 1px solid {BRAND_BORDER};
-    margin-bottom: 32px;
+/* ---------- الهيرو ---------- */
+.hero {{ text-align: center; padding: 52px 0 40px 0; }}
+.hero .badge {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: {BRAND_ORANGE_SOFT};
+    color: {BRAND_ORANGE_DARK};
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
 }}
 .hero h1 {{
-    font-size: 1.85rem;
+    font-size: 2.15rem;
     font-weight: 800;
-    color: {BRAND_WHITE};
-    margin: 0 0 10px 0;
-    line-height: 1.4;
+    color: {INK};
+    margin: 0 0 14px 0;
+    line-height: 1.35;
 }}
 .hero p {{
-    color: {BRAND_MUTED};
-    font-size: 0.96rem;
-    max-width: 460px;
+    color: {INK_SOFT};
+    font-size: 1rem;
+    max-width: 490px;
     margin: 0 auto;
-    line-height: 1.7;
+    line-height: 1.75;
 }}
 
-/* ---------- شريط الخطوات ---------- */
-.steps-row {{
-    display: flex;
-    justify-content: center;
-    gap: 28px;
-    margin-bottom: 36px;
+/* ---------- بطاقات الميزات ---------- */
+.feature-card {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 16px;
+    padding: 20px 18px;
+    height: 100%;
+    box-shadow: 0 1px 2px rgba(16,16,20,0.04);
 }}
-.step-item {{
+.feature-card .icon-circle {{
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: {BRAND_ORANGE_SOFT};
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: {BRAND_MUTED};
-    font-size: 0.85rem;
-    font-weight: 500;
+    justify-content: center;
+    margin-bottom: 12px;
 }}
-.step-item i {{
-    font-size: 16px;
-    color: {BRAND_ORANGE};
-}}
+.feature-card .icon-circle i {{ font-size: 19px; color: {BRAND_ORANGE_DARK}; }}
+.feature-card h4 {{ font-size: 0.94rem; font-weight: 700; color: {INK}; margin: 0 0 6px 0; }}
+.feature-card p {{ font-size: 0.82rem; color: {INK_SOFT}; margin: 0; line-height: 1.6; }}
 
 /* ---------- عناوين الأقسام ---------- */
-.section-heading {{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0 0 4px 0;
+.section-heading {{ display: flex; align-items: center; gap: 9px; margin: 0 0 4px 0; }}
+.section-heading i {{ font-size: 18px; color: {BRAND_ORANGE}; }}
+.section-heading h3 {{ font-size: 1.05rem; font-weight: 700; color: {INK}; margin: 0; }}
+.section-desc {{ color: {INK_SOFT}; font-size: 0.85rem; margin: 3px 0 18px 0; }}
+
+/* ---------- بطاقة عامة ---------- */
+.card-wrap {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 18px;
+    padding: 24px 22px 10px 22px;
+    box-shadow: 0 1px 3px rgba(16,16,20,0.05);
+    margin-bottom: 26px;
 }}
-.section-heading i {{
-    font-size: 19px;
-    color: {BRAND_ORANGE};
-}}
-.section-heading h3 {{
-    font-size: 1.02rem;
-    font-weight: 700;
-    color: {BRAND_WHITE};
-    margin: 0;
-}}
-.section-desc {{
-    color: {BRAND_MUTED};
-    font-size: 0.84rem;
-    margin: 2px 0 16px 0;
-}}
-.section-block {{ margin-bottom: 30px; }}
 
 /* ---------- رفع الفيديو ---------- */
 section[data-testid="stFileUploaderDropzone"] {{
-    background-color: {BRAND_SURFACE} !important;
-    border: 1px dashed {BRAND_BORDER} !important;
-    border-radius: 12px !important;
+    background-color: #FCFCFD !important;
+    border: 1.5px dashed {LINE} !important;
+    border-radius: 14px !important;
 }}
-section[data-testid="stFileUploaderDropzone"]:hover {{
-    border-color: {BRAND_ORANGE}88 !important;
-}}
+section[data-testid="stFileUploaderDropzone"]:hover {{ border-color: {BRAND_ORANGE} !important; }}
 
-/* ---------- التبويبات ---------- */
+/* ---------- التبويبات (شكل شرائح مقسّمة) ---------- */
 .stTabs [data-baseweb="tab-list"] {{
     gap: 2px;
-    background: {BRAND_SURFACE};
+    background: #F0F0F2;
     padding: 4px;
-    border-radius: 10px;
-    border: 1px solid {BRAND_BORDER};
+    border-radius: 11px;
 }}
 .stTabs [data-baseweb="tab"] {{
-    border-radius: 7px;
-    color: {BRAND_MUTED};
+    border-radius: 8px;
+    color: {INK_SOFT};
     font-weight: 600;
-    font-size: 0.86rem;
-    padding: 8px 16px;
+    font-size: 0.87rem;
+    padding: 9px 16px;
 }}
 .stTabs [aria-selected="true"] {{
-    background: {BRAND_SURFACE_2} !important;
-    color: {BRAND_ORANGE} !important;
+    background: {SURFACE} !important;
+    color: {BRAND_ORANGE_DARK} !important;
+    box-shadow: 0 1px 2px rgba(16,16,20,0.08);
 }}
-.stTabs [data-baseweb="tab-panel"] {{
-    background: {BRAND_SURFACE};
-    border: 1px solid {BRAND_BORDER};
-    border-top: none;
-    border-radius: 0 0 10px 10px;
-    padding: 22px 18px 8px 18px;
-}}
+.stTabs [data-baseweb="tab-panel"] {{ padding: 22px 2px 8px 2px; }}
 
 /* ---------- عناصر الإدخال ---------- */
 div[data-baseweb="select"] > div, .stTextInput input, .stNumberInput input {{
-    background-color: {BRAND_SURFACE_2} !important;
-    color: {BRAND_WHITE} !important;
-    border-radius: 8px !important;
-    border-color: {BRAND_BORDER} !important;
+    background-color: {SURFACE} !important;
+    color: {INK} !important;
+    border-radius: 9px !important;
+    border-color: {LINE} !important;
 }}
 .stSlider [data-baseweb="slider"] > div > div {{ background: {BRAND_ORANGE} !important; }}
-div[role="radiogroup"] label p, .stRadio label p {{ color: {BRAND_WHITE} !important; }}
-.stCheckbox p, .stToggle p {{ color: {BRAND_WHITE} !important; }}
-label p {{ color: {BRAND_MUTED} !important; font-size: 0.85rem !important; font-weight: 500 !important; }}
+label p {{ color: {INK} !important; font-size: 0.85rem !important; font-weight: 600 !important; }}
 
 /* ---------- الأزرار ---------- */
 .stButton>button {{
     background: {BRAND_ORANGE};
-    color: #14100c;
+    color: #FFFFFF;
     font-weight: 700;
     font-size: 1rem;
-    border-radius: 10px;
+    border-radius: 11px;
     width: 100%;
     padding: 13px;
     border: none;
-    transition: background 0.15s ease;
+    box-shadow: 0 4px 10px rgba(242,105,33,0.28);
+    transition: all 0.15s ease;
 }}
-.stButton>button:hover {{ background: {BRAND_ORANGE_LIGHT}; }}
-.stButton>button:active {{ transform: scale(0.99); }}
+.stButton>button:hover {{ background: {BRAND_ORANGE_DARK}; transform: translateY(-1px); }}
+.stButton>button:active {{ transform: translateY(0); }}
 
 .stDownloadButton>button {{
-    background: transparent;
-    color: {BRAND_WHITE};
-    border: 1px solid {BRAND_BORDER};
+    background: {SURFACE};
+    color: {INK};
+    border: 1px solid {LINE};
     font-weight: 600;
-    border-radius: 10px;
+    border-radius: 11px;
     width: 100%;
     padding: 12px;
 }}
-.stDownloadButton>button:hover {{ border-color: {BRAND_ORANGE}; color: {BRAND_ORANGE}; }}
+.stDownloadButton>button:hover {{ border-color: {BRAND_ORANGE}; color: {BRAND_ORANGE_DARK}; }}
 
 /* ---------- تنبيهات ---------- */
-div[data-testid="stAlert"] {{ border-radius: 10px; }}
+div[data-testid="stAlert"] {{ border-radius: 11px; }}
 
 /* ---------- الفوتر ---------- */
 .app-footer {{
     text-align: center;
-    color: {BRAND_MUTED};
+    color: {INK_SOFT};
     font-size: 0.8rem;
-    padding-top: 28px;
-    margin-top: 12px;
-    border-top: 1px solid {BRAND_BORDER};
+    padding-top: 26px;
+    margin-top: 16px;
+    border-top: 1px solid {LINE};
 }}
 </style>
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# الهيدر وقسم المقدمة
+# الشريط العلوي
 # =============================================================================
 if LOGO_B64:
     st.markdown(f"""
-        <div class="top-nav">
+        <div class="top-bar">
             <img src="data:image/png;base64,{LOGO_B64}" alt="edit73" />
             <div class="wordmark">edit<span>73</span></div>
         </div>
     """, unsafe_allow_html=True)
 
+# =============================================================================
+# الهيرو
+# =============================================================================
 st.markdown("""
     <div class="hero">
-        <h1>ترجمة فيديو تلقائية بالذكاء الاصطناعي</h1>
-        <p>يحلّل edit73 الصوت، يولّد ترجمة نصية مضبوطة التوقيت، ويهيئ الفيديو
-        للنشر مباشرة على منصات التواصل الاجتماعي بالعربية والإنجليزية.</p>
-    </div>
-
-    <div class="steps-row">
-        <div class="step-item"><i class="ti ti-upload"></i>رفع الفيديو</div>
-        <div class="step-item"><i class="ti ti-adjustments"></i>ضبط الإعدادات</div>
-        <div class="step-item"><i class="ti ti-download"></i>تنزيل النتيجة</div>
+        <div class="badge"><i class="ti ti-sparkles"></i>مدعوم بالذكاء الاصطناعي</div>
+        <h1>ترجمة فيديو احترافية خلال دقائق</h1>
+        <p>يحلّل edit73 حديثك المسجّل، يولّد ترجمة نصية مضبوطة التوقيت بالعربية
+        والإنجليزية، ويهيئ الفيديو للنشر مباشرة على منصات التواصل الاجتماعي.</p>
     </div>
 """, unsafe_allow_html=True)
+
+fc1, fc2, fc3 = st.columns(3, gap="small")
+with fc1:
+    st.markdown("""
+        <div class="feature-card">
+            <div class="icon-circle"><i class="ti ti-language"></i></div>
+            <h4>دعم عربي وإنجليزي</h4>
+            <p>تعرّف تلقائي على اللغة، وضبط الخط المناسب لكل جملة.</p>
+        </div>
+    """, unsafe_allow_html=True)
+with fc2:
+    st.markdown("""
+        <div class="feature-card">
+            <div class="icon-circle"><i class="ti ti-aspect-ratio"></i></div>
+            <h4>مقاسات جاهزة للنشر</h4>
+            <p>عمودي، مربع، أو الأبعاد الأصلية بضغطة واحدة.</p>
+        </div>
+    """, unsafe_allow_html=True)
+with fc3:
+    st.markdown("""
+        <div class="feature-card">
+            <div class="icon-circle"><i class="ti ti-layout-navbar"></i></div>
+            <h4>مواضع مدروسة</h4>
+            <p>ترجمة وهووك بمواضع تراعي واجهات إنستغرام وتيك توك.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+st.markdown('<div style="height:36px"></div>', unsafe_allow_html=True)
 
 
 def section_heading(icon, title, desc):
@@ -279,15 +314,8 @@ def section_heading(icon, title, desc):
 
 
 # =============================================================================
-# معالجة النص العربي: الاعتماد على raqm (Pillow) عند توفره
+# معالجة النص العربي (ثابتة على كل السيرفرات، راجع الشرح أعلى الملف)
 # =============================================================================
-# Pillow يتضمن منذ إصدارات حديثة محرك raqm الذي يقوم تلقائياً بربط الحروف العربية
-# (Shaping) وترتيب اتجاه الكتابة (Bidi) عبر جداول OpenType (GSUB) الخاصة بكل خط.
-# هذا هو المسار الصحيح لأنه يعمل مع أي خط عربي مصمم بشكل قياسي (مثل Tajawal)
-# بدل الاعتماد على تحويل يدوي لأشكال العرض (Presentation Forms) التي لا تغطيها
-# أغلب الخطوط الحديثة بشكل كامل، وتتسبب بحروف مفقودة أو تنسيق غير صحيح.
-RAQM_AVAILABLE = pil_features.check("raqm")
-
 _ARABIC_RE = re.compile(r'[\u0600-\u06FF\u0750-\u077F]')
 
 
@@ -300,8 +328,6 @@ def is_mostly_arabic(txt):
 
 
 def prepare_text_for_rendering(txt):
-    if RAQM_AVAILABLE:
-        return txt
     if _ARABIC_RE.search(txt):
         return get_display(arabic_reshaper.reshape(txt))
     return txt
@@ -319,15 +345,15 @@ def hex_to_rgb(hex_color):
 
 FONT_LIBRARY = {
     "عريض (Bold)": {
-        "ar": os.path.join(FONTS_DIR, "Tajawal-Bold.ttf"),
+        "ar": os.path.join(FONTS_DIR, "NotoSansArabic-Bold.ttf"),
         "en": os.path.join(FONTS_DIR, "Poppins-Bold.ttf"),
     },
     "عريض جداً (Extra Bold)": {
-        "ar": os.path.join(FONTS_DIR, "Tajawal-ExtraBold.ttf"),
+        "ar": os.path.join(FONTS_DIR, "NotoSansArabic-ExtraBold.ttf"),
         "en": os.path.join(FONTS_DIR, "Poppins-ExtraBold.ttf"),
     },
     "أسود ثقيل (Black)": {
-        "ar": os.path.join(FONTS_DIR, "Tajawal-Black.ttf"),
+        "ar": os.path.join(FONTS_DIR, "NotoSansArabic-Black.ttf"),
         "en": os.path.join(FONTS_DIR, "Poppins-Black.ttf"),
     },
     "كلاسيكي (Naskh)": {
@@ -339,11 +365,6 @@ FALLBACK_FONT = os.path.join(FONTS_DIR, "NotoNaskhArabic-Regular.ttf")
 
 
 def create_srt_batches(words, batch_size=3):
-    """
-    يبني ملف SRT من كلمات AssemblyAI، مع ضمان حد أدنى للمدة الزمنية لكل شريحة
-    (300 مللي ثانية) لتفادي شرائح صفرية المدة قد تتسبب بفشل عملية التصدير،
-    وتجاهل أي شريحة نصها فارغ بعد التنظيف.
-    """
     srt_content = ""
     counter = 1
     for i in range(0, len(words), batch_size):
@@ -370,16 +391,19 @@ def create_srt_batches(words, batch_size=3):
 # =============================================================================
 # قسم رفع الفيديو
 # =============================================================================
+st.markdown('<div class="card-wrap">', unsafe_allow_html=True)
 section_heading("ti-video", "رفع الفيديو", "صيغة MP4. يتم تحليل الصوت وتحديد اللغة تلقائياً.")
 uploaded_file = st.file_uploader(" ", type=["mp4"], label_visibility="collapsed")
+st.markdown('</div>', unsafe_allow_html=True)
 
 if uploaded_file is not None:
     with open("temp_input.mp4", "wb") as f:
         f.write(uploaded_file.read())
 
     st.video("temp_input.mp4")
+    st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
 
-    st.markdown('<div style="height:30px"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="card-wrap">', unsafe_allow_html=True)
     section_heading("ti-settings", "إعدادات الفيديو", "تحكم كامل بالترجمة النصية، أبعاد الفيديو، ونص الافتتاح.")
 
     tab_caption, tab_frame, tab_hook = st.tabs(["الترجمة النصية", "الإطار والأبعاد", "نص الافتتاح"])
@@ -395,7 +419,7 @@ if uploaded_file is not None:
                 "موضع الترجمة",
                 ["أسفل الشاشة (موصى به)", "منتصف الشاشة", "أعلى الشاشة"],
                 index=0,
-                help="الموضع الافتراضي محسوب لتجنّب مناطق واجهة إنستغرام وتيك توك (الأزرار، اسم الحساب، والتعليقات)."
+                help="الموضع الافتراضي محسوب لتجنّب مناطق واجهة إنستغرام وتيك توك."
             )
             use_stroke = st.toggle("حدّ خارجي للنص (Outline)", value=True)
             stroke_color = st.color_picker("لون الحدّ الخارجي", "#000000", disabled=not use_stroke)
@@ -415,7 +439,7 @@ if uploaded_file is not None:
         )
         c3, c4 = st.columns(2)
         with c3:
-            frame_color = st.color_picker("لون الخلفية أو الإطار", BRAND_BLACK)
+            frame_color = st.color_picker("لون الخلفية أو الإطار", "#0A0A0C")
         with c4:
             border_thickness = st.slider("سماكة الإطار (بكسل)", 0, 60, 0)
 
@@ -428,7 +452,8 @@ if uploaded_file is not None:
         with c6:
             hook_color = st.color_picker("لون نص الافتتاح", BRAND_ORANGE, disabled=not use_hook)
 
-    st.markdown('<div style="height:10px"></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:6px"></div>', unsafe_allow_html=True)
 
     if st.button("معالجة الفيديو"):
 
@@ -478,14 +503,11 @@ if uploaded_file is not None:
                 try:
                     return vc.TextClip(**kwargs)
                 except Exception:
-                    # حماية إضافية: في حال تعذّر الرسم بالخط المختار لأي سبب،
-                    # يُعاد المحاولة بالخط الاحتياطي بدل فشل العملية بالكامل.
                     kwargs["font"] = FALLBACK_FONT
                     return vc.TextClip(**kwargs)
 
             video = vfc.VideoFileClip("temp_input.mp4")
 
-            # ---- الإطار حول الفيديو ----
             frame_rgb = hex_to_rgb(frame_color)
             bw = video.w + 2 * border_thickness
             bh = video.h + 2 * border_thickness
@@ -493,7 +515,6 @@ if uploaded_file is not None:
             video_positioned = video.with_position((border_thickness, border_thickness))
             bordered_video = cvc.CompositeVideoClip([border_bg, video_positioned], size=(bw, bh))
 
-            # ---- أبعاد النشر (Aspect Ratio) ----
             target_ratio_map = {
                 "عمودي 9:16 — Reels / Shorts / TikTok": 9 / 16,
                 "مربع 1:1 — Instagram Feed": 1 / 1,
@@ -514,10 +535,6 @@ if uploaded_file is not None:
 
             layers = [final_frame]
 
-            # ---- الترجمة النصية ----
-            # المواضع محسوبة استناداً إلى مناطق الأمان المعتمدة في تصميم واجهات
-            # إنستغرام وتيك توك: أسفل 15-20% من الشاشة وأعلى 10-12% منها
-            # تُغطى غالباً بعناصر الواجهة (اسم الحساب، التعليق، وأزرار التفاعل).
             if has_speech:
                 subtitles = sub.SubtitlesClip("temp_subtitles.srt", make_textclip=create_styled_text)
                 position_map = {
@@ -528,32 +545,25 @@ if uploaded_file is not None:
                 subtitles = subtitles.with_position(("center", position_map[caption_position]))
                 layers.append(subtitles)
 
-            # ---- نص الافتتاح ----
             if use_hook and hook_text.strip():
                 hook_display = prepare_text_for_rendering(hook_text)
                 hook_font = pick_font_for_text(hook_text, font_style)
+                hook_kwargs = dict(
+                    text=hook_display,
+                    font_size=int(font_size * 1.2),
+                    color=hook_color,
+                    font=hook_font,
+                    method="label",
+                    stroke_color="#000000",
+                    stroke_width=max(2, font_size // 15),
+                    bg_color=(0, 0, 0, 130),
+                )
                 try:
-                    hook_clip = vc.TextClip(
-                        text=hook_display,
-                        font_size=int(font_size * 1.2),
-                        color=hook_color,
-                        font=hook_font,
-                        method="label",
-                        stroke_color="#000000",
-                        stroke_width=max(2, font_size // 15),
-                        bg_color=(0, 0, 0, 130),
-                    )
+                    hook_clip = vc.TextClip(**hook_kwargs)
                 except Exception:
-                    hook_clip = vc.TextClip(
-                        text=hook_display,
-                        font_size=int(font_size * 1.2),
-                        color=hook_color,
-                        font=FALLBACK_FONT,
-                        method="label",
-                        stroke_color="#000000",
-                        stroke_width=max(2, font_size // 15),
-                        bg_color=(0, 0, 0, 130),
-                    )
+                    hook_kwargs["font"] = FALLBACK_FONT
+                    hook_clip = vc.TextClip(**hook_kwargs)
+
                 hook_clip = (
                     hook_clip
                     .with_position(("center", int(canvas_h * 0.14)))
@@ -564,18 +574,14 @@ if uploaded_file is not None:
 
             final_video = cvc.CompositeVideoClip(layers, size=(canvas_w, canvas_h))
 
-            write_kwargs = dict(
-                codec='libx264',
-                preset='ultrafast',
-                fps=video.fps or 30,
-                logger=None,
-            )
+            write_kwargs = dict(codec='libx264', preset='ultrafast', fps=video.fps or 30, logger=None)
             if final_video.audio is not None:
                 write_kwargs["audio_codec"] = "aac"
 
             final_video.write_videofile("temp_output.mp4", **write_kwargs)
 
-        st.markdown('<div style="height:20px"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="height:22px"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-wrap">', unsafe_allow_html=True)
         section_heading("ti-circle-check", "الفيديو النهائي", "المعالجة اكتملت بنجاح.")
         st.video("temp_output.mp4")
 
@@ -586,5 +592,6 @@ if uploaded_file is not None:
                 file_name="edit73_video.mp4",
                 mime="video/mp4",
             )
+        st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="app-footer">edit73 — استوديو الترجمة الذكي</div>', unsafe_allow_html=True)
