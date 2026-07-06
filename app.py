@@ -481,31 +481,6 @@ if uploaded_file is not None:
 
         with st.spinner("جارٍ تجهيز الفيديو بالتنسيق المختار..."):
 
-            def create_styled_text(txt):
-                display_text = prepare_text_for_rendering(txt)
-                chosen_font = pick_font_for_text(txt, font_style)
-
-                kwargs = dict(
-                    text=display_text,
-                    font_size=font_size,
-                    color=text_color,
-                    font=chosen_font,
-                    method="label",
-                )
-                if use_stroke:
-                    kwargs["stroke_color"] = stroke_color
-                    kwargs["stroke_width"] = max(2, font_size // 18)
-                if bg_style == "صندوق أسود شفاف":
-                    kwargs["bg_color"] = (0, 0, 0, 140)
-                elif bg_style == "صندوق بلون العلامة":
-                    kwargs["bg_color"] = hex_to_rgb(BRAND_ORANGE) + (255,)
-
-                try:
-                    return vc.TextClip(**kwargs)
-                except Exception:
-                    kwargs["font"] = FALLBACK_FONT
-                    return vc.TextClip(**kwargs)
-
             video = vfc.VideoFileClip("temp_input.mp4")
 
             frame_rgb = hex_to_rgb(frame_color)
@@ -533,6 +508,50 @@ if uploaded_file is not None:
                 canvas_w, canvas_h = bw, bh
                 final_frame = bordered_video
 
+            # هامش أمان أفقي: لا يُسمح لأي نص أن يتجاوز 92% من عرض الفيديو،
+            # لتفادي قص الكلمات من الجانبين على الفيديوهات الضيقة (كالعمودية).
+            max_text_width = int(canvas_w * 0.92)
+
+            def fit_font_size(text, font_path, desired_size, min_size=20):
+                """
+                يقيس عرض النص فعلياً بنفس الخط، ويصغّر الحجم تدريجياً فقط إذا
+                تجاوز عرض الفيديو المتاح، بدل قصّ الحروف من الأطراف.
+                """
+                size = desired_size
+                while size > min_size:
+                    measured = ImageFont.truetype(font_path, size).getbbox(text)
+                    width = measured[2] - measured[0]
+                    if width <= max_text_width:
+                        return size
+                    size -= 2
+                return min_size
+
+            def create_styled_text(txt):
+                display_text = prepare_text_for_rendering(txt)
+                chosen_font = pick_font_for_text(txt, font_style)
+                fitted_size = fit_font_size(display_text, chosen_font, font_size)
+
+                kwargs = dict(
+                    text=display_text,
+                    font_size=fitted_size,
+                    color=text_color,
+                    font=chosen_font,
+                    method="label",
+                )
+                if use_stroke:
+                    kwargs["stroke_color"] = stroke_color
+                    kwargs["stroke_width"] = max(2, fitted_size // 18)
+                if bg_style == "صندوق أسود شفاف":
+                    kwargs["bg_color"] = (0, 0, 0, 140)
+                elif bg_style == "صندوق بلون العلامة":
+                    kwargs["bg_color"] = hex_to_rgb(BRAND_ORANGE) + (255,)
+
+                try:
+                    return vc.TextClip(**kwargs)
+                except Exception:
+                    kwargs["font"] = FALLBACK_FONT
+                    return vc.TextClip(**kwargs)
+
             layers = [final_frame]
 
             if has_speech:
@@ -548,14 +567,15 @@ if uploaded_file is not None:
             if use_hook and hook_text.strip():
                 hook_display = prepare_text_for_rendering(hook_text)
                 hook_font = pick_font_for_text(hook_text, font_style)
+                hook_fitted_size = fit_font_size(hook_display, hook_font, int(font_size * 1.2))
                 hook_kwargs = dict(
                     text=hook_display,
-                    font_size=int(font_size * 1.2),
+                    font_size=hook_fitted_size,
                     color=hook_color,
                     font=hook_font,
                     method="label",
                     stroke_color="#000000",
-                    stroke_width=max(2, font_size // 15),
+                    stroke_width=max(2, hook_fitted_size // 15),
                     bg_color=(0, 0, 0, 130),
                 )
                 try:
