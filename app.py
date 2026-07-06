@@ -526,6 +526,17 @@ if uploaded_file is not None:
                     size -= 2
                 return min_size
 
+            def _clamp_width(clip):
+                """
+                ضمان صارم ونهائي: حتى لو اختلف قياس الخط المسبق عن الحجم الفعلي
+                المُصدَّر (بسبب فروق دقيقة بين إصدارات الخطوط أو المكتبات بين
+                الأجهزة)، يعاد ضبط حجم الصورة الناتجة نفسها لتلتزم بعرض الفيديو
+                إجبارياً. هذا مستقل تماماً عن أي حساب تقديري سابق.
+                """
+                if clip.w > max_text_width:
+                    return clip.resized(max_text_width / clip.w)
+                return clip
+
             def create_styled_text(txt):
                 display_text = prepare_text_for_rendering(txt)
                 chosen_font = pick_font_for_text(txt, font_style)
@@ -547,10 +558,11 @@ if uploaded_file is not None:
                     kwargs["bg_color"] = hex_to_rgb(BRAND_ORANGE) + (255,)
 
                 try:
-                    return vc.TextClip(**kwargs)
+                    clip = vc.TextClip(**kwargs)
                 except Exception:
                     kwargs["font"] = FALLBACK_FONT
-                    return vc.TextClip(**kwargs)
+                    clip = vc.TextClip(**kwargs)
+                return _clamp_width(clip)
 
             layers = [final_frame]
 
@@ -583,6 +595,7 @@ if uploaded_file is not None:
                 except Exception:
                     hook_kwargs["font"] = FALLBACK_FONT
                     hook_clip = vc.TextClip(**hook_kwargs)
+                hook_clip = _clamp_width(hook_clip)
 
                 hook_clip = (
                     hook_clip
