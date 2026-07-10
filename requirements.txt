@@ -1,0 +1,7 @@
+streamlit>=1.38
+assemblyai>=0.35
+moviepy>=2.1
+Pillow>=10.0
+arabic-reshaper>=3.0
+python-bidi>=0.4
+numpy>=1.26
